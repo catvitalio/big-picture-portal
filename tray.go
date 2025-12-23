@@ -10,17 +10,14 @@ import (
 var iconData []byte
 
 var (
-	// Big Picture display items
-	bpInternalItem  *systray.MenuItem
-	bpExternalItem  *systray.MenuItem
-	bpExtendItem    *systray.MenuItem
-	bpDuplicateItem *systray.MenuItem
+	bpDisplayItems   map[string]*systray.MenuItem
+	mainDisplayItems map[string]*systray.MenuItem
 
-	// Main display items
-	mainInternalItem  *systray.MenuItem
-	mainExternalItem  *systray.MenuItem
-	mainExtendItem    *systray.MenuItem
-	mainDuplicateItem *systray.MenuItem
+	bpAudioMenu    *systray.MenuItem
+	mainAudioMenu  *systray.MenuItem
+	bpAudioItems   []*systray.MenuItem
+	mainAudioItems []*systray.MenuItem
+	audioDevices   []AudioDevice
 )
 
 func onReady() {
@@ -28,119 +25,150 @@ func onReady() {
 	systray.SetTitle("Big Picture Portal")
 	systray.SetTooltip("Big Picture Portal")
 
-	// Big Picture display menu
+	bpDisplayItems = make(map[string]*systray.MenuItem)
+	mainDisplayItems = make(map[string]*systray.MenuItem)
+
 	bigPictureMenu := systray.AddMenuItem("Big Picture Display", "Select display for Big Picture mode")
-	bpInternalItem = bigPictureMenu.AddSubMenuItem("Internal", "PC screen only")
-	bpExternalItem = bigPictureMenu.AddSubMenuItem("External", "Second screen only")
-	bpDuplicateItem = bigPictureMenu.AddSubMenuItem("Duplicate", "Duplicate screens")
-	bpExtendItem = bigPictureMenu.AddSubMenuItem("Extend", "Extend screens")
+	bpDisplayItems["internal"] = bigPictureMenu.AddSubMenuItem("Internal", "PC screen only")
+	bpDisplayItems["external"] = bigPictureMenu.AddSubMenuItem("External", "Second screen only")
+	bpDisplayItems["duplicate"] = bigPictureMenu.AddSubMenuItem("Duplicate", "Duplicate screens")
+	bpDisplayItems["extend"] = bigPictureMenu.AddSubMenuItem("Extend", "Extend screens")
 
-	systray.AddSeparator()
-
-	// Main display menu
 	mainMenu := systray.AddMenuItem("Main Display", "Select display for normal mode")
-	mainInternalItem = mainMenu.AddSubMenuItem("Internal", "PC screen only")
-	mainExternalItem = mainMenu.AddSubMenuItem("External", "Second screen only")
-	mainDuplicateItem = mainMenu.AddSubMenuItem("Duplicate", "Duplicate screens")
-	mainExtendItem = mainMenu.AddSubMenuItem("Extend", "Extend screens")
+	mainDisplayItems["internal"] = mainMenu.AddSubMenuItem("Internal", "PC screen only")
+	mainDisplayItems["external"] = mainMenu.AddSubMenuItem("External", "Second screen only")
+	mainDisplayItems["duplicate"] = mainMenu.AddSubMenuItem("Duplicate", "Duplicate screens")
+	mainDisplayItems["extend"] = mainMenu.AddSubMenuItem("Extend", "Extend screens")
 
 	systray.AddSeparator()
 
-	// Quit menu
+	bpAudioMenu = systray.AddMenuItem("Big Picture Audio", "Select audio output for Big Picture mode")
+	mainAudioMenu = systray.AddMenuItem("Main Audio", "Select audio output for normal mode")
+
+	systray.AddSeparator()
+
 	mQuit := systray.AddMenuItem("Quit", "Quit the application")
 
-	// Update menu checkmarks
+	loadAudioDevices()
 	updateMenuState()
-
-	// Start monitoring
 	go monitorBigPicture()
+	go handleAudioMenuClicks()
 
-	// Handle menu clicks
-	go func() {
-		for {
-			select {
-			// Big Picture display options
-			case <-bpInternalItem.ClickedCh:
-				config.BigPictureDisplay = "internal"
+	for mode, item := range bpDisplayItems {
+		m := mode
+		go func(menuItem *systray.MenuItem) {
+			for range menuItem.ClickedCh {
+				config.BigPictureDisplay = m
 				saveConfig()
 				updateMenuState()
-
-			case <-bpExternalItem.ClickedCh:
-				config.BigPictureDisplay = "external"
-				saveConfig()
-				updateMenuState()
-
-			case <-bpDuplicateItem.ClickedCh:
-				config.BigPictureDisplay = "duplicate"
-				saveConfig()
-				updateMenuState()
-
-			case <-bpExtendItem.ClickedCh:
-				config.BigPictureDisplay = "extend"
-				saveConfig()
-				updateMenuState()
-
-			// Main display options
-			case <-mainInternalItem.ClickedCh:
-				config.MainDisplay = "internal"
-				saveConfig()
-				updateMenuState()
-
-			case <-mainExternalItem.ClickedCh:
-				config.MainDisplay = "external"
-				saveConfig()
-				updateMenuState()
-
-			case <-mainDuplicateItem.ClickedCh:
-				config.MainDisplay = "duplicate"
-				saveConfig()
-				updateMenuState()
-
-			case <-mainExtendItem.ClickedCh:
-				config.MainDisplay = "extend"
-				saveConfig()
-				updateMenuState()
-
-			case <-mQuit.ClickedCh:
-				systray.Quit()
-				return
 			}
-		}
+		}(item)
+	}
+
+	for mode, item := range mainDisplayItems {
+		m := mode
+		go func(menuItem *systray.MenuItem) {
+			for range menuItem.ClickedCh {
+				config.MainDisplay = m
+				saveConfig()
+				updateMenuState()
+			}
+		}(item)
+	}
+
+	go func() {
+		<-mQuit.ClickedCh
+		systray.Quit()
 	}()
 }
 
 func updateMenuState() {
-	// Update Big Picture display checkmarks
-	bpInternalItem.Uncheck()
-	bpExternalItem.Uncheck()
-	bpDuplicateItem.Uncheck()
-	bpExtendItem.Uncheck()
+	updateDisplayMenuState()
+	updateAudioMenuState()
+}
 
-	switch config.BigPictureDisplay {
-	case "internal":
-		bpInternalItem.Check()
-	case "external":
-		bpExternalItem.Check()
-	case "duplicate":
-		bpDuplicateItem.Check()
-	case "extend":
-		bpExtendItem.Check()
+func updateDisplayMenuState() {
+	for mode, item := range bpDisplayItems {
+		if mode == config.BigPictureDisplay {
+			item.Check()
+		} else {
+			item.Uncheck()
+		}
 	}
 
-	// Update Main display checkmarks
-	mainInternalItem.Uncheck()
-	mainExternalItem.Uncheck()
-	mainDuplicateItem.Uncheck()
-	mainExtendItem.Uncheck()
+	for mode, item := range mainDisplayItems {
+		if mode == config.MainDisplay {
+			item.Check()
+		} else {
+			item.Uncheck()
+		}
+	}
+}
 
-	switch config.MainDisplay {
-	case "internal":
-		mainInternalItem.Check()
-	case "external":
-		mainExternalItem.Check()
-	case "duplicate":
-		mainDuplicateItem.Check()
-	case "extend":
-		mainExtendItem.Check()
+func loadAudioDevices() {
+	devices, err := getAudioDevices()
+	if err != nil {
+		return
+	}
+	audioDevices = devices
+
+	bpAudioItems = nil
+	mainAudioItems = nil
+
+	for i := range audioDevices {
+		device := &audioDevices[i]
+
+		displayName := device.Name
+		if device.DeviceState != 1 {
+			displayName += " (Disabled)"
+		}
+
+		bpItem := bpAudioMenu.AddSubMenuItem(displayName, device.ID)
+		mainItem := mainAudioMenu.AddSubMenuItem(displayName, device.ID)
+
+		bpAudioItems = append(bpAudioItems, bpItem)
+		mainAudioItems = append(mainAudioItems, mainItem)
+	}
+
+	updateAudioMenuState()
+}
+
+func updateAudioMenuState() {
+	for i, item := range bpAudioItems {
+		item.Uncheck()
+		if audioDevices[i].ID == config.BigPictureAudio {
+			item.Check()
+		}
+	}
+
+	for i, item := range mainAudioItems {
+		item.Uncheck()
+		if audioDevices[i].ID == config.MainAudio {
+			item.Check()
+		}
+	}
+}
+
+func handleAudioMenuClicks() {
+	for i := range audioDevices {
+		idx := i
+
+		go func() {
+			for {
+				<-bpAudioItems[idx].ClickedCh
+				config.BigPictureAudio = audioDevices[idx].ID
+				saveConfig()
+				updateAudioMenuState()
+			}
+		}()
+
+		go func() {
+			for {
+				<-mainAudioItems[idx].ClickedCh
+				config.MainAudio = audioDevices[idx].ID
+				saveConfig()
+				updateAudioMenuState()
+			}
+		}()
 	}
 }

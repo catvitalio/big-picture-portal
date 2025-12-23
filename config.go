@@ -9,6 +9,8 @@ import (
 type Config struct {
 	BigPictureDisplay string `json:"bigPictureDisplay"`
 	MainDisplay       string `json:"mainDisplay"`
+	BigPictureAudio   string `json:"bigPictureAudio"`
+	MainAudio         string `json:"mainAudio"`
 	CheckInterval     int    `json:"checkInterval"`
 }
 
@@ -35,6 +37,8 @@ func loadConfig() {
 		config = Config{
 			BigPictureDisplay: "external",
 			MainDisplay:       "internal",
+			BigPictureAudio:   "",
+			MainAudio:         "",
 			CheckInterval:     2000,
 		}
 		return

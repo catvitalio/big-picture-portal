@@ -46,8 +46,10 @@ func monitorBigPicture() {
 
 		if bigPictureRunning {
 			switchDisplay(config.BigPictureDisplay)
+			switchAudio(config.BigPictureAudio)
 		} else if !bigPictureRunning {
 			switchDisplay(config.MainDisplay)
+			switchAudio(config.MainAudio)
 		}
 	}
 }

@@ -41,15 +41,20 @@ func monitorBigPicture() {
 	ticker := time.NewTicker(time.Duration(config.CheckInterval) * time.Millisecond)
 	defer ticker.Stop()
 
+	previousState := false
+
 	for range ticker.C {
 		bigPictureRunning := isSteamBigPictureRunning()
 
-		if bigPictureRunning {
-			switchDisplay(config.BigPictureDisplay)
-			switchAudio(config.BigPictureAudio)
-		} else if !bigPictureRunning {
-			switchDisplay(config.MainDisplay)
-			switchAudio(config.MainAudio)
+		if bigPictureRunning != previousState {
+			if bigPictureRunning {
+				switchDisplay(config.BigPictureDisplay)
+				switchAudio(config.BigPictureAudio)
+			} else {
+				switchDisplay(config.MainDisplay)
+				switchAudio(config.MainAudio)
+			}
+			previousState = bigPictureRunning
 		}
 	}
 }

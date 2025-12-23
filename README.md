@@ -48,18 +48,18 @@ go get
 build.bat
 ```
 
-This will create `big-picture-portal.exe` in the project directory.
+This will create `BigPicturePortal.exe` in the project directory.
 
 Alternatively, build manually:
 ```bash
-go build -ldflags="-H windowsgui" -o big-picture-portal.exe .
+go build -ldflags="-H windowsgui" -o BigPicturePortal.exe .
 ```
 
 The `-H windowsgui` flag prevents a console window from appearing.
 
 ## Usage
 
-1. Run `big-picture-portal.exe`
+1. Run `BigPicturePortal.exe`
 2. The application will appear in your system tray
 3. Right-click the tray icon to configure settings:
    - **Big Picture Display** - Choose display mode for Big Picture (Internal/External/Duplicate/Extend)
@@ -130,34 +130,6 @@ Example configuration:
 └── assets/
     └── icon.ico  - System tray icon
 ```
-
-## Building
-
-### Prerequisites
-
-```bash
-go version  # Ensure Go 1.21+
-```
-
-### Build Commands
-
-**Standard build:**
-```bash
-go build -o big-picture-portal.exe .
-```
-
-**Release build (no console window):**
-```bash
-go build -ldflags="-H windowsgui" -o big-picture-portal.exe .
-```
-
-**Using build.bat:**
-```bash
-build.bat
-```
-
-The batch file builds with the windowsgui flag automatically.
-
 
 ## License
 
